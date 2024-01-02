@@ -60,11 +60,15 @@ def get_gpu_info():
         # print('gpu使用占比:', gpu.memoryUtil * 100)  # 内存使用率
         # print('gpu load:', gpu.load * 100)  # 使用率
         # 按GPU逐个添加信息
-        gpu_list.append({"gpu_id": gpu.id,
-                         "gpu_memoryTotal": gpu.memoryTotal,
-                         "gpu_memoryUsed": gpu.memoryUsed,
-                         "gpu_memoryUtil": gpu.memoryUtil * 100,
-                         "gpu_load": gpu.load * 100})
+        gpu_list.append(
+            {
+                "gpu_id": gpu.id,
+                "gpu_memoryTotal": gpu.memoryTotal,
+                "gpu_memoryUsed": gpu.memoryUsed,
+                "gpu_memoryUtil": gpu.memoryUtil * 100,
+                "gpu_load": gpu.load * 100,
+            }
+        )
 
     return gpu_list
 
@@ -73,6 +77,7 @@ class PredictDataHandlerThread(QThread):
     """
     打印信息的线程
     """
+
     predict_message_trigger = pyqtSignal(str)
 
     def __init__(self, predict_model):
@@ -104,17 +109,29 @@ class PredictHandlerThread(QThread):
     进行模型推理的线程
     """
 
-    def __init__(self, input_player, output_player, out_file_path, weight_path,
-                 predict_info_plain_text_edit, predict_progress_bar, fps_label,
-                 button_dict, input_tab, output_tab, input_image_label, output_image_label,
-                 real_time_show_predict_flag):
+    def __init__(
+        self,
+        input_player,
+        output_player,
+        out_file_path,
+        weight_path,
+        predict_info_plain_text_edit,
+        predict_progress_bar,
+        fps_label,
+        button_dict,
+        input_tab,
+        output_tab,
+        input_image_label,
+        output_image_label,
+        real_time_show_predict_flag,
+    ):
         super(PredictHandlerThread, self).__init__()
         self.running = False
 
-        '''加载模型'''
+        """加载模型"""
         self.predict_model = YOLOPredict(weight_path, out_file_path)
         self.output_predict_file = ""
-        self.parameter_source = ''
+        self.parameter_source = ""
 
         # 传入的QT插件
         self.input_player = input_player
@@ -133,7 +150,9 @@ class PredictHandlerThread(QThread):
 
         # 创建显示进程
         self.predict_data_handler_thread = PredictDataHandlerThread(self.predict_model)
-        self.predict_data_handler_thread.predict_message_trigger.connect(self.add_messages)
+        self.predict_data_handler_thread.predict_message_trigger.connect(
+            self.add_messages
+        )
 
     def __del__(self):
         self.running = False
@@ -158,16 +177,20 @@ class PredictHandlerThread(QThread):
             self.output_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
 
         with torch.no_grad():
-            self.output_predict_file = self.predict_model.detect(self.parameter_source,
-                                                                 qt_input=qt_input,
-                                                                 qt_output=qt_output)
+            self.output_predict_file = self.predict_model.detect(
+                self.parameter_source, qt_input=qt_input, qt_output=qt_output
+            )
 
         if self.output_predict_file != "":
             # 将 str 路径转为 QUrl 并显示
-            self.input_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.parameter_source)))  # 选取视频文件
+            self.input_player.setMedia(
+                QMediaContent(QUrl.fromLocalFile(self.parameter_source))
+            )  # 选取视频文件
             self.input_player.pause()  # 显示媒体
 
-            self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
+            self.output_player.setMedia(
+                QMediaContent(QUrl.fromLocalFile(self.output_predict_file))
+            )  # 选取视频文件
             self.output_player.pause()  # 显示媒体
 
             # tab 设置显示第一栏
@@ -176,7 +199,7 @@ class PredictHandlerThread(QThread):
 
             # video_flag = os.path.splitext(self.parameter_source)[-1].lower() in vid_formats
             for item, button in self.button_dict.items():
-                if image_flag and item in ['play_pushButton', 'pause_pushButton']:
+                if image_flag and item in ["play_pushButton", "pause_pushButton"]:
                     continue
                 button.setEnabled(True)
         # self.predict_data_handler_thread.running = False
@@ -207,31 +230,40 @@ class PredictHandlerThread(QThread):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, weight_path, out_file_path, real_time_show_predict_flag: bool, parent=None):
+    def __init__(
+        self, weight_path, out_file_path, real_time_show_predict_flag: bool, parent=None
+    ):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle("Intelligent Monitoring System of Construction Site Software " + CODE_VER)
+        self.setWindowTitle(
+            "Intelligent Monitoring System of Construction Site Software " + CODE_VER
+        )
         self.showMaximized()
 
-        '''按键绑定'''
+        """按键绑定"""
         # 输入媒体
         self.import_media_pushButton.clicked.connect(self.import_media)  # 导入
         self.start_predict_pushButton.clicked.connect(self.predict_button_click)  # 开始推理
         # 输出媒体
-        self.open_predict_file_pushButton.clicked.connect(self.open_file_in_browser)  # 文件中显示推理视频
+        self.open_predict_file_pushButton.clicked.connect(
+            self.open_file_in_browser
+        )  # 文件中显示推理视频
         # 下方
         self.play_pushButton.clicked.connect(self.play_pause_button_click)  # 播放
         self.pause_pushButton.clicked.connect(self.play_pause_button_click)  # 暂停
         self.button_dict = dict()
-        self.button_dict.update({"import_media_pushButton": self.import_media_pushButton,
-                                 "start_predict_pushButton": self.start_predict_pushButton,
-                                 "open_predict_file_pushButton": self.open_predict_file_pushButton,
-                                 "play_pushButton": self.play_pushButton,
-                                 "pause_pushButton": self.pause_pushButton,
-                                 "real_time_checkBox": self.real_time_checkBox
-                                 })
+        self.button_dict.update(
+            {
+                "import_media_pushButton": self.import_media_pushButton,
+                "start_predict_pushButton": self.start_predict_pushButton,
+                "open_predict_file_pushButton": self.open_predict_file_pushButton,
+                "play_pushButton": self.play_pushButton,
+                "pause_pushButton": self.pause_pushButton,
+                "real_time_checkBox": self.real_time_checkBox,
+            }
+        )
 
-        '''媒体流绑定输出'''
+        """媒体流绑定输出"""
         self.input_player = QMediaPlayer()  # 媒体输入的widget
         self.input_player.setVideoOutput(self.input_video_widget)
         self.input_player.positionChanged.connect(self.change_slide_bar)  # 播放进度条
@@ -239,11 +271,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.output_player = QMediaPlayer()  # 媒体输出的widget
         self.output_player.setVideoOutput(self.output_video_widget)
 
-        '''初始化GPU chart'''
+        """初始化GPU chart"""
         self.series = QSplineSeries()
         self.chart_init()
 
-        '''初始化GPU定时查询定时器'''
+        """初始化GPU定时查询定时器"""
         # 使用QTimer，0.5秒触发一次，更新数据
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.draw_gpu_info_chart)
@@ -253,21 +285,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.video_length = 0
         self.out_file_path = out_file_path
         # 推理使用另外一线程
-        self.predict_handler_thread = PredictHandlerThread(self.input_player,
-                                                           self.output_player,
-                                                           self.out_file_path,
-                                                           weight_path,
-                                                           self.predict_info_plainTextEdit,
-                                                           self.predict_progressBar,
-                                                           self.fps_label,
-                                                           self.button_dict,
-                                                           self.input_media_tabWidget,
-                                                           self.output_media_tabWidget,
-                                                           self.input_real_time_label,
-                                                           self.output_real_time_label,
-                                                           real_time_show_predict_flag
-                                                           )
-        self.weight_label.setText(f" Using weight : ****** {Path(weight_path[0]).name} ******")
+        self.predict_handler_thread = PredictHandlerThread(
+            self.input_player,
+            self.output_player,
+            self.out_file_path,
+            weight_path,
+            self.predict_info_plainTextEdit,
+            self.predict_progressBar,
+            self.fps_label,
+            self.button_dict,
+            self.input_media_tabWidget,
+            self.output_media_tabWidget,
+            self.input_real_time_label,
+            self.output_real_time_label,
+            real_time_show_predict_flag,
+        )
+        self.weight_label.setText(
+            f" Using weight : ****** {Path(weight_path[0]).name} ******"
+        )
         # 界面美化
         self.gen_better_gui()
 
@@ -275,8 +310,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.predict_progressBar.setValue(0)  # 进度条归零
 
-        '''check box 绑定'''
-        self.real_time_checkBox.stateChanged.connect(self.real_time_checkbox_state_changed)
+        """check box 绑定"""
+        self.real_time_checkBox.stateChanged.connect(
+            self.real_time_checkbox_state_changed
+        )
         self.real_time_checkBox.setChecked(real_time_show_predict_flag)
         self.real_time_check_state = self.real_time_checkBox.isChecked()
 
@@ -312,7 +349,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         :return:
         """
         self.real_time_check_state = self.real_time_checkBox.isChecked()
-        self.predict_handler_thread.real_time_show_predict_flag = self.real_time_check_state
+        self.predict_handler_thread.real_time_show_predict_flag = (
+            self.real_time_check_state
+        )
 
     def chart_init(self):
         """
@@ -322,7 +361,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.gpu_info_chart._chart = QChart(title="折线图堆叠")  # 创建折线视图
         self.gpu_info_chart._chart = QChart()  # 创建折线视图
         # chart._chart.setBackgroundVisible(visible=False)      # 背景色透明
-        self.gpu_info_chart._chart.setBackgroundBrush(QBrush(QColor("#FFFFFF")))  # 改变图背景色
+        self.gpu_info_chart._chart.setBackgroundBrush(
+            QBrush(QColor("#FFFFFF"))
+        )  # 改变图背景色
 
         # 设置曲线名称
         self.series.setName("GPU Utilization")
@@ -392,9 +433,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.predict_handler_thread.parameter_source = self.media_source.toLocalFile()
         self.input_player.pause()  # 显示媒体
 
-        image_flag = os.path.splitext(self.predict_handler_thread.parameter_source)[-1].lower() in img_formats
+        image_flag = (
+            os.path.splitext(self.predict_handler_thread.parameter_source)[-1].lower()
+            in img_formats
+        )
         for item, button in self.button_dict.items():
-            if image_flag and item in ['play_pushButton', 'pause_pushButton']:
+            if image_flag and item in ["play_pushButton", "pause_pushButton"]:
                 button.setEnabled(False)
             else:
                 button.setEnabled(True)
@@ -415,8 +459,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         :return:
         """
         self.video_length = self.input_player.duration() + 0.1
-        self.video_horizontalSlider.setValue(round((position / self.video_length) * 100))
-        self.video_percent_label.setText(str(round((position / self.video_length) * 100, 2)) + '%')
+        self.video_horizontalSlider.setValue(
+            round((position / self.video_length) * 100)
+        )
+        self.video_percent_label.setText(
+            str(round((position / self.video_length) * 100, 2)) + "%"
+        )
 
     @pyqtSlot()
     def play_pause_button_click(self):
@@ -453,7 +501,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print("Close")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     weight_root = Path.cwd().joinpath("weights")
@@ -462,7 +510,7 @@ if __name__ == '__main__':
 
     weight_file = [item for item in weight_root.iterdir() if item.suffix == ".pt"]
     weight_root = [str(weight_file[0])]  # 权重文件位置
-    out_file_root = Path.cwd().joinpath(r'inference/output')
+    out_file_root = Path.cwd().joinpath(r"inference/output")
     out_file_root.parent.mkdir(exist_ok=True)
     out_file_root.mkdir(exist_ok=True)
 
